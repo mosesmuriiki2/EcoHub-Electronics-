@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Stock Movement History - Ecohub Energy Africa Limited{% endblock %}
+{% block header_title %}Stock Movement Audit Trail{% endblock %}
+{% block header_subtitle %}Comprehensive, immutable log of all inventory additions, sales, and corrections{% endblock %}
+
+{% block header_actions %}
+{% if user.is_admin_role %}
+<a href="{% url 'inventory:stock_in' %}" class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors">
+    <i class="fa-solid fa-arrow-down-to-bracket mr-1.5"></i> Stock-In
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Filter Tabs -->
+    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+            <a href="{% url 'inventory:stock_movement_list' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold {% if not movement_type %}bg-slate-900 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                All Movements
+            </a>
+            <a href="{% url 'inventory:stock_movement_list' %}?type=stock_in" class="px-3 py-1.5 rounded-lg text-xs font-semibold {% if movement_type == 'stock_in' %}bg-emerald-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Stock In
+            </a>
+            <a href="{% url 'inventory:stock_movement_list' %}?type=sale" class="px-3 py-1.5 rounded-lg text-xs font-semibold {% if movement_type == 'sale' %}bg-blue-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Sales Deductions
+            </a>
+            <a href="{% url 'inventory:stock_movement_list' %}?type=adjustment" class="px-3 py-1.5 rounded-lg text-xs font-semibold {% if movement_type == 'adjustment' %}bg-purple-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Adjustments
+            </a>
+        </div>
+    </div>
+
+    <!-- Movement Table -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-semibold tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3.5">Timestamp</th>
+                        <th class="px-6 py-3.5">Product</th>
+                        <th class="px-6 py-3.5">Movement Type</th>
+                        <th class="px-6 py-3.5 text-right">Quantity Delta</th>
+                        <th class="px-6 py-3.5">Reference / Notes</th>
+                        <th class="px-6 py-3.5">Staff User</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    {% for mv in movements %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-mono">
+                            {{ mv.created_at|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
+                            <a href="{% url 'inventory:product_detail' mv.product.pk %}" class="hover:text-emerald-600 transition-colors">
+                                {{ mv.product.name }}
+                            </a>
+                            <span class="text-xs text-slate-400 block font-mono">{{ mv.product.sku }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if mv.movement_type == 'stock_in' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                <i class="fa-solid fa-arrow-down mr-1"></i> Stock In
+                            </span>
+                            {% elif mv.movement_type == 'sale' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <i class="fa-solid fa-cart-shopping mr-1"></i> Sale
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                <i class="fa-solid fa-sliders mr-1"></i> Adjustment
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-mono font-bold text-sm {% if mv.movement_type == 'stock_in' %}text-emerald-600{% elif mv.movement_type == 'sale' %}text-rose-600{% else %}text-slate-800{% endif %}">
+                            {% if mv.movement_type == 'stock_in' %}+{% elif mv.movement_type == 'sale' %}-{% endif %}{{ mv.quantity }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-slate-600 text-xs">
+                            {{ mv.reference|default:"—" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                            <span class="font-medium text-slate-800">{{ mv.created_by.get_full_name|default:mv.created_by.username|default:"System" }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-clock-rotate-left text-3xl mb-2 text-slate-300"></i>
+                            <p class="text-base font-medium">No stock movements found.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+            <div>
+                Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </div>
+            <div class="space-x-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if movement_type %}&type={{ movement_type }}{% endif %}" class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100">Previous</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if movement_type %}&type={{ movement_type }}{% endif %}" class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

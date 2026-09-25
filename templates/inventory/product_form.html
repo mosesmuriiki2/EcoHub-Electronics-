@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Ecohub Energy Africa Limited{% endblock %}
+{% block header_title %}{{ title }}{% endblock %}
+{% block header_subtitle %}
+    {% if is_edit %}
+    Update product details and retail pricing
+    {% else %}
+    Add a new product to your inventory catalog
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-sm">
+                {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Product Basic Info -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+                    Product Identification
+                </h3>
+
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                        Product Name <span class="text-rose-500">*</span>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="text-xs text-rose-600 mt-1">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.sku.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                            SKU / Barcode
+                        </label>
+                        {{ form.sku }}
+                        <p class="text-xs text-slate-400 mt-1">Leave blank to auto-generate a unique code.</p>
+                        {% if form.sku.errors %}
+                        <p class="text-xs text-rose-600 mt-1">{{ form.sku.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                            Category
+                        </label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                        <p class="text-xs text-rose-600 mt-1">{{ form.category.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing & Margins -->
+            <div class="space-y-4 pt-4">
+                <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+                    Pricing & Valuation
+                </h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.cost_price.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                            Cost Price (KSh)
+                        </label>
+                        {{ form.cost_price }}
+                        <p class="text-xs text-slate-400 mt-1">Your wholesale purchase cost per unit.</p>
+                        {% if form.cost_price.errors %}
+                        <p class="text-xs text-rose-600 mt-1">{{ form.cost_price.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.selling_price.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                            Selling Price (KSh) <span class="text-rose-500">*</span>
+                        </label>
+                        {{ form.selling_price }}
+                        <p class="text-xs text-slate-400 mt-1">Customer retail price.</p>
+                        {% if form.selling_price.errors %}
+                        <p class="text-xs text-rose-600 mt-1">{{ form.selling_price.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock & Inventory Parameters -->
+            <div class="space-y-4 pt-4">
+                <h3 class="text-sm font-semibold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+                    Inventory & Alerts
+                </h3>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.reorder_level.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                            Reorder Alert Level
+                        </label>
+                        {{ form.reorder_level }}
+                        <p class="text-xs text-slate-400 mt-1">Alert triggers when stock drops to or below this level.</p>
+                        {% if form.reorder_level.errors %}
+                        <p class="text-xs text-rose-600 mt-1">{{ form.reorder_level.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    {% if not is_edit %}
+                    <div>
+                        <label for="{{ form.initial_stock.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                            Initial Opening Stock
+                        </label>
+                        {{ form.initial_stock }}
+                        <p class="text-xs text-slate-400 mt-1">Automatically logs an opening StockMovement.</p>
+                        {% if form.initial_stock.errors %}
+                        <p class="text-xs text-rose-600 mt-1">{{ form.initial_stock.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <p class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Current In Stock</p>
+                        <p class="text-xl font-bold text-slate-900 mt-1">{{ product.quantity_in_stock }} units</p>
+                        <p class="text-xs text-slate-500 mt-1">To change stock, use the <a href="{% url 'inventory:stock_in' %}?product={{ product.pk }}" class="text-emerald-600 underline font-medium">Stock-In form</a>.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center space-x-2 pt-2">
+                    {{ form.is_active }}
+                    <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-slate-700">
+                        Active in Product Catalog (available for new sales)
+                    </label>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="pt-6 border-t border-slate-200 flex items-center justify-end space-x-3">
+                <a href="{% url 'inventory:product_list' %}" class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors">
+                    {% if is_edit %}Save Changes{% else %}Create Product{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

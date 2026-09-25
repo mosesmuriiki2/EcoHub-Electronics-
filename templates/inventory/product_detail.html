@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }} - Ecohub Energy Africa Limited{% endblock %}
+{% block header_title %}{{ product.name }}{% endblock %}
+{% block header_subtitle %}SKU: {{ product.sku }}{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center space-x-2">
+    <a href="{% url 'inventory:product_list' %}" class="inline-flex items-center px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 rounded-lg shadow-sm transition-colors">
+        <i class="fa-solid fa-arrow-left mr-1.5 text-slate-500"></i> Back to Inventory
+    </a>
+    {% if user.is_admin_role %}
+    <a href="{% url 'inventory:stock_in' %}?product={{ product.pk }}" class="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors">
+        <i class="fa-solid fa-arrow-down-to-bracket mr-1.5"></i> Stock-In
+    </a>
+    <a href="{% url 'inventory:product_edit' product.pk %}" class="inline-flex items-center px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 rounded-lg shadow-sm transition-colors">
+        <i class="fa-solid fa-pen mr-1.5 text-slate-500"></i> Edit
+    </a>
+    <form method="post" action="{% url 'inventory:product_toggle_active' product.pk %}" class="inline" onsubmit="return confirm('Toggle active status for this product?');">
+        {% csrf_token %}
+        {% if product.is_active %}
+        <button type="submit" class="inline-flex items-center px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-semibold border border-rose-200 rounded-lg transition-colors">
+            <i class="fa-solid fa-pause mr-1.5"></i> Deactivate
+        </button>
+        {% else %}
+        <button type="submit" class="inline-flex items-center px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold border border-emerald-200 rounded-lg transition-colors">
+            <i class="fa-solid fa-play mr-1.5"></i> Activate
+        </button>
+        {% endif %}
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Low Stock Warning Banner -->
+    {% if product.is_out_of_stock %}
+    <div class="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-3 text-rose-800">
+        <i class="fa-solid fa-circle-exclamation text-2xl text-rose-600"></i>
+        <div>
+            <h4 class="font-bold">Out of Stock Alert</h4>
+            <p class="text-xs text-rose-700">This product is completely sold out (0 available). Consider restocking immediately.</p>
+        </div>
+    </div>
+    {% elif product.is_low_stock %}
+    <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center space-x-3 text-amber-800">
+        <i class="fa-solid fa-triangle-exclamation text-2xl text-amber-600"></i>
+        <div>
+            <h4 class="font-bold">Low Stock Warning</h4>
+            <p class="text-xs text-amber-700">Current stock ({{ product.quantity_in_stock }}) is at or below the reorder threshold of {{ product.reorder_level }} units.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Product Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Available Stock</p>
+            <p class="text-3xl font-extrabold {% if product.is_out_of_stock %}text-rose-600{% elif product.is_low_stock %}text-amber-600{% else %}text-emerald-600{% endif %} mt-1">
+                {{ product.quantity_in_stock }}
+            </p>
+            <p class="text-xs text-slate-400 mt-1">Reorder level: {{ product.reorder_level }} units</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Retail Selling Price</p>
+            <p class="text-3xl font-extrabold text-slate-900 mt-1 font-mono">KSh {{ product.selling_price|floatformat:2 }}</p>
+            <p class="text-xs text-slate-400 mt-1">Standard customer price</p>
+        </div>
+
+        {% if user.is_admin_role %}
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cost Price</p>
+            <p class="text-3xl font-extrabold text-slate-700 mt-1 font-mono">KSh {{ product.cost_price|floatformat:2 }}</p>
+            <p class="text-xs text-slate-400 mt-1">Wholesale purchase cost</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Profit Margin</p>
+            <p class="text-3xl font-extrabold text-emerald-700 mt-1 font-mono">
+                KSh {{ product.selling_price|add:"0"|floatformat:2 }}
+            </p>
+            <p class="text-xs text-slate-400 mt-1">Per unit margin</p>
+        </div>
+        {% else %}
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</p>
+            <p class="text-xl font-bold text-slate-800 mt-1">{{ product.category.name|default:"Uncategorized" }}</p>
+            <p class="text-xs text-slate-400 mt-1">Status: {{ product.is_active|yesno:"Active,Inactive" }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Product Metadata Details -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <h3 class="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+            <span>Product Details</span>
+            {% if product.is_active %}
+            <span class="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">Catalog Active</span>
+            {% else %}
+            <span class="inline-flex items-center text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-300">Catalog Inactive</span>
+            {% endif %}
+        </h3>
+
+        <dl class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+            <div>
+                <dt class="text-xs font-semibold text-slate-500 uppercase">Product SKU</dt>
+                <dd class="mt-1 font-mono font-bold text-slate-900">{{ product.sku }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs font-semibold text-slate-500 uppercase">Category</dt>
+                <dd class="mt-1 text-slate-800 font-medium">{{ product.category.name|default:"None" }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs font-semibold text-slate-500 uppercase">Date Added</dt>
+                <dd class="mt-1 text-slate-800">{{ product.created_at|date:"M d, Y - H:i" }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Recent Stock Movements Audit Trail -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+            <div>
+                <h3 class="text-base font-bold text-slate-900">Stock Movement Audit Trail</h3>
+                <p class="text-xs text-slate-500">Every change to stock for this product is recorded here</p>
+            </div>
+            <a href="{% url 'inventory:stock_movement_list' %}" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700">
+                View All Movements &rarr;
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Timestamp</th>
+                        <th class="px-6 py-3">Movement Type</th>
+                        <th class="px-6 py-3 text-right">Quantity Delta</th>
+                        <th class="px-6 py-3">Reference / Note</th>
+                        <th class="px-6 py-3">Recorded By</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    {% for mv in movements %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3.5 whitespace-nowrap text-xs text-slate-600">
+                            {{ mv.created_at|date:"M d, Y - H:i" }}
+                        </td>
+                        <td class="px-6 py-3.5 whitespace-nowrap">
+                            {% if mv.movement_type == 'stock_in' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                                <i class="fa-solid fa-arrow-down mr-1"></i> Stock In
+                            </span>
+                            {% elif mv.movement_type == 'sale' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                <i class="fa-solid fa-cart-shopping mr-1"></i> Sale
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                <i class="fa-solid fa-sliders mr-1"></i> Adjustment
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-3.5 whitespace-nowrap text-right font-mono font-bold {% if mv.movement_type == 'stock_in' %}text-emerald-600{% elif mv.movement_type == 'sale' %}text-rose-600{% else %}text-slate-800{% endif %}">
+                            {% if mv.movement_type == 'stock_in' %}+{% elif mv.movement_type == 'sale' %}-{% endif %}{{ mv.quantity|stringformat:"+d"|default:mv.quantity }}
+                        </td>
+                        <td class="px-6 py-3.5 whitespace-nowrap text-slate-600 text-xs">
+                            {{ mv.reference|default:"—" }}
+                        </td>
+                        <td class="px-6 py-3.5 whitespace-nowrap text-xs text-slate-600">
+                            {{ mv.created_by.username|default:"System" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-xs">
+                            No stock movement records yet for this product.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

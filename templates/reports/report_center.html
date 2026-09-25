@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Reports - Ecohub Energy Africa Limited{% endblock %}
+{% block header_title %}Reports & Exports{% endblock %}
+{% block header_subtitle %}Performance metrics and downloadable business records{% endblock %}
+{% block header_actions %}<a href="{% url 'reports:print' %}" class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"><i class="fa-solid fa-print"></i> Print dashboard</a>{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form method="get" class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div><label class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500" for="from">From</label><input id="from" type="date" name="from" value="{{ start_date|date:'Y-m-d' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm"></div>
+            <div><label class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500" for="to">To</label><input id="to" type="date" name="to" value="{{ end_date|date:'Y-m-d' }}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm"></div>
+            <button class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Apply dates</button>
+            <a href="{% url 'reports:center' %}" class="px-3 py-2 text-sm font-medium text-slate-500">Clear</a>
+        </form>
+    </section>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-500">Sales</p><p class="mt-3 text-2xl font-black text-slate-950">KES {{ metrics.sales_total|floatformat:2 }}</p></div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-500">Collected</p><p class="mt-3 text-2xl font-black text-emerald-700">KES {{ metrics.paid_total|floatformat:2 }}</p></div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-500">Outstanding</p><p class="mt-3 text-2xl font-black text-rose-600">KES {{ metrics.outstanding|floatformat:2 }}</p></div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-500">Invoices</p><p class="mt-3 text-2xl font-black text-slate-950">{{ metrics.invoice_count }}</p></div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-500">Average sale</p><p class="mt-3 text-2xl font-black text-slate-950">KES {{ metrics.average_sale|floatformat:2 }}</p></div>
+    </div>
+    <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="font-bold text-slate-950">Sales report</h2><p class="text-sm text-slate-500">{{ metrics.invoice_count }} invoice{{ metrics.invoice_count|pluralize }} in the selected period</p></div><div class="flex gap-2"><a href="{% url 'reports:sales_csv' %}{% if start_date %}?from={{ start_date|date:'Y-m-d' }}&to={{ end_date|date:'Y-m-d' }}{% endif %}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700"><i class="fa-solid fa-file-csv mr-1"></i> CSV</a><a href="{% url 'reports:sales_xlsx' %}{% if start_date %}?from={{ start_date|date:'Y-m-d' }}&to={{ end_date|date:'Y-m-d' }}{% endif %}" class="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white"><i class="fa-solid fa-file-excel mr-1"></i> Excel</a></div></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-5 py-3">Invoice</th><th class="px-5 py-3">Date</th><th class="px-5 py-3">Customer</th><th class="px-5 py-3">Status</th><th class="px-5 py-3 text-right">Total</th><th class="px-5 py-3 text-right">Balance</th></tr></thead><tbody>{% for sale in sales %}<tr class="border-t border-slate-100"><td class="px-5 py-3 font-semibold"><a class="text-emerald-700" href="{% url 'sales:document_detail' sale.pk %}">{{ sale.doc_number }}</a></td><td class="px-5 py-3 text-slate-500">{{ sale.issue_date|date:'d M Y' }}</td><td class="px-5 py-3">{{ sale.customer.name|default:'Walk-in Customer' }}</td><td class="px-5 py-3">{{ sale.get_status_display }}</td><td class="px-5 py-3 text-right font-semibold">KES {{ sale.total|floatformat:2 }}</td><td class="px-5 py-3 text-right">KES {{ sale.balance_due|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="6" class="px-5 py-10 text-center text-slate-500">No sales match the selected dates.</td></tr>{% endfor %}</tbody></table></div>
+    </section>
+</div>
+{% endblock %}

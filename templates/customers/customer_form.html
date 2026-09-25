@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - Ecohub Energy Africa Limited{% endblock %}
+{% block header_title %}{{ title }}{% endblock %}
+{% block header_subtitle %}
+    {% if is_edit %}
+    Update profile and address for {{ customer.name }}
+    {% else %}
+    Register a new customer for quotation and invoice issuance
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <div class="flex items-center space-x-3 pb-6 border-b border-slate-200 mb-6">
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-slate-900">{{ title }}</h2>
+                <p class="text-xs text-slate-500">Contact and billing information for this customer.</p>
+            </div>
+        </div>
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm">
+                {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                    Customer / Business Name <span class="text-rose-500">*</span>
+                </label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <p class="text-xs text-rose-600 mt-1">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ form.account_number.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                        Account Number
+                    </label>
+                    {{ form.account_number }}
+                    {% if form.account_number.errors %}
+                    <p class="text-xs text-rose-600 mt-1">{{ form.account_number.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                        Phone Number
+                    </label>
+                    {{ form.phone }}
+                    {% if form.phone.errors %}
+                    <p class="text-xs text-rose-600 mt-1">{{ form.phone.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                        Email Address
+                    </label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                    <p class="text-xs text-rose-600 mt-1">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div>
+                <label for="{{ form.address.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                    Physical / Delivery Address
+                </label>
+                {{ form.address }}
+                {% if form.address.errors %}
+                <p class="text-xs text-rose-600 mt-1">{{ form.address.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
+                    Internal Notes / Tax PIN
+                </label>
+                {{ form.notes }}
+                <p class="text-xs text-slate-400 mt-1">Optional shop notes or KRA / Tax PIN.</p>
+                {% if form.notes.errors %}
+                <p class="text-xs text-rose-600 mt-1">{{ form.notes.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="pt-6 border-t border-slate-200 flex items-center justify-end space-x-3">
+                <a href="{% url 'customers:customer_list' %}" class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors">
+                    {% if is_edit %}Save Changes{% else %}Create Customer{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Sales & Invoices - Ecohub Energy Africa Limited{% endblock %}
+{% block header_title %}Sales & Invoices{% endblock %}
+{% block header_subtitle %}Track customer purchases, pending invoices, and payment statuses{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'sales:document_create' %}?type=invoice" class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors">
+    <i class="fa-solid fa-plus mr-1.5"></i> New Sale / Invoice
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Filter and Search Toolbar -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <form method="get" class="flex flex-col sm:flex-row items-center gap-3">
+            <div class="relative flex-1 w-full">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                </div>
+                <input type="text" name="q" value="{{ query }}" placeholder="Search invoices by invoice number, customer, or item..."
+                       class="block w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <select name="status" class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    <option value="">All Statuses</option>
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition-colors">
+                    Filter
+                </button>
+                {% if query or status_filter %}
+                <a href="{% url 'sales:invoice_list' %}" class="px-3 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium">
+                    Reset
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-semibold tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3.5">Invoice #</th>
+                        <th class="px-6 py-3.5">Date</th>
+                        <th class="px-6 py-3.5">Customer</th>
+                        <th class="px-6 py-3.5 text-right">Total (KSh)</th>
+                        <th class="px-6 py-3.5 text-right">Paid (KSh)</th>
+                        <th class="px-6 py-3.5 text-right">Balance (KSh)</th>
+                        <th class="px-6 py-3.5 text-center">Status</th>
+                        <th class="px-6 py-3.5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    {% for inv in invoices %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap font-mono font-bold text-slate-900">
+                            <a href="{% url 'sales:document_detail' inv.pk %}" class="hover:text-emerald-600 transition-colors">
+                                {{ inv.doc_number }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                            {{ inv.issue_date|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-slate-900 font-medium">
+                            {% if inv.customer %}
+                            <a href="{% url 'customers:customer_detail' inv.customer.pk %}" class="hover:underline">
+                                {{ inv.customer.name }}
+                            </a>
+                            {% else %}
+                            <span class="text-slate-400 italic">Walk-in Customer</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-mono font-bold text-slate-900">
+                            KSh {{ inv.total|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-mono text-emerald-600">
+                            KSh {{ inv.total_paid|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-mono font-bold {% if inv.balance_due > 0 %}text-rose-600{% else %}text-slate-400{% endif %}">
+                            KSh {{ inv.balance_due|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {% if inv.status == 'paid' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <i class="fa-solid fa-check mr-1"></i> Paid
+                            </span>
+                            {% elif inv.status == 'partially_paid' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                <i class="fa-solid fa-hourglass-half mr-1"></i> Partial
+                            </span>
+                            {% elif inv.status == 'unpaid' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                                <i class="fa-solid fa-clock mr-1"></i> Unpaid
+                            </span>
+                            {% elif inv.status == 'draft' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+                                Draft
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                                {{ inv.get_status_display }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm space-x-1.5">
+                            <a href="{% url 'sales:document_detail' inv.pk %}" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300"></i>
+                            <p class="text-base font-medium text-slate-600">No invoices recorded yet.</p>
+                            <p class="text-xs text-slate-400 mt-1">Click "New Sale / Invoice" above to record a sale.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+            <div>
+                Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </div>
+            <div class="space-x-1">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100">Previous</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

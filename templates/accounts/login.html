@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In - Ecohub Energy Africa Limited{% endblock %}
+
+{% block unauth_content %}
+<div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="text-center">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 text-white shadow-lg mb-3">
+            <i class="fa-solid fa-bolt text-2xl"></i>
+        </div>
+        <h2 class="text-3xl font-extrabold text-slate-900">Eco<span class="text-emerald-600">hub</span></h2>
+        <p class="mt-1 text-sm text-slate-500">Sign in to your account</p>
+    </div>
+
+    <div class="mt-8 bg-white py-8 px-6 shadow-md border border-slate-200 sm:rounded-xl sm:px-10">
+        <form class="space-y-6" method="post" action="{% url 'accounts:login' %}">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+            <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-sm">
+                Invalid username or password. Please try again.
+            </div>
+            {% endif %}
+
+            <div>
+                <label for="id_username" class="block text-sm font-medium text-slate-700">Username</label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-regular fa-user"></i>
+                    </div>
+                    <input type="text" name="username" id="id_username" required autofocus
+                           class="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           placeholder="Enter your username">
+                </div>
+            </div>
+
+            <div>
+                <label for="id_password" class="block text-sm font-medium text-slate-700">Password</label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <input type="password" name="password" id="id_password" required
+                           class="block w-full pl-10 pr-3 py-2.5 sm:text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           placeholder="Enter your password">
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">
+                    Sign in
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

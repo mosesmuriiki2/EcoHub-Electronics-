@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ document.get_doc_type_display }} {{ document.doc_number }} - Ecohub Energy Africa Limited{% endblock %}
+{% block header_title %}{{ document.get_doc_type_display }} {{ document.doc_number }}{% endblock %}
+{% block header_subtitle %}
+    Issued on {{ document.issue_date|date:"F d, Y" }}
+    {% if document.customer %}to {{ document.customer.name }}{% else %}(Walk-in Customer){% endif %}
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center space-x-2">
+    <a href="{% if document.is_invoice %}{% url 'sales:invoice_list' %}{% else %}{% url 'sales:quotation_list' %}{% endif %}"
+       class="inline-flex items-center px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 rounded-lg shadow-sm transition-colors">
+        <i class="fa-solid fa-arrow-left mr-1.5 text-slate-500"></i> Back to List
+    </a>
+
+    <form method="get" action="{% url 'sales:document_print' document.pk %}" target="_blank" class="inline-flex items-center gap-1.5">
+        <select name="signature_type" id="signature-type" class="px-2 py-2 bg-white text-slate-700 text-xs font-semibold border border-slate-300 rounded-lg">
+            <option value="user">Sign as logged-in user</option>
+            <option value="custom">Use typed signature</option>
+        </select>
+        <input type="text" name="signature_name" id="signature-name" placeholder="Signature name" aria-label="Custom signature name" class="hidden w-32 px-2 py-2 text-xs border border-slate-300 rounded-lg">
+        <button type="submit" class="inline-flex items-center px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 rounded-lg transition-colors">
+            <i class="fa-solid fa-file-pdf mr-1.5 text-slate-500"></i> Print PDF
+        </button>
+    </form>
+
+    {% if document.is_quotation and document.status != 'converted' and document.status != 'cancelled' %}
+    <form method="post" action="{% url 'sales:quotation_convert' document.pk %}" class="inline" onsubmit="return confirm('Convert this quotation to an active invoice?');">
+        {% csrf_token %}
+        <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow-sm transition-colors">
+            <i class="fa-solid fa-file-invoice-dollar mr-1.5"></i> Convert to Invoice
+        </button>
+    </form>
+    {% endif %}
+
+    {% if document.is_invoice and document.balance_due > 0 %}
+    <button type="button" id="btn-open-payment" class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg shadow-sm transition-colors">
+        <i class="fa-solid fa-money-bill-wave mr-1.5"></i> Record Payment
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Main Printable Invoice / Quotation Sheet -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 sm:p-12 print:border-none print:shadow-none print:p-0">
+        <!-- Top Header & Status -->
+        <div class="flex flex-col sm:flex-row justify-between items-start pb-8 border-b border-slate-100 gap-6">
+            <div>
+                <div class="flex items-center space-x-3 mb-2">
+                    <span class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-lg font-bold shadow-sm">
+                        <i class="fa-solid fa-bolt"></i>
+                    </span>
+                    <span class="text-2xl font-extrabold text-slate-900 tracking-tight">Eco<span class="text-emerald-600">hub</span></span>
+                </div>
+                <p class="text-xs text-slate-500">Electronics & Accessories Shop</p>
+                <p class="text-xs text-slate-500">Nairobi, Kenya &bull; Tel: 0748891464 &bull; info@ecohubenergyafrica.com</p>
+            </div>
+
+            <div class="text-left sm:text-right">
+                <h2 class="text-3xl font-extrabold uppercase tracking-tight {% if document.is_invoice %}text-blue-900{% else %}text-purple-900{% endif %}">
+                    {{ document.get_doc_type_display }}
+                </h2>
+                <p class="text-sm font-mono font-bold text-slate-700 mt-1">{{ document.doc_number }}</p>
+
+                <!-- Status Badge -->
+                <div class="mt-2">
+                    {% if document.status == 'paid' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <i class="fa-solid fa-check mr-1.5"></i> Paid in Full
+                    </span>
+                    {% elif document.status == 'partially_paid' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                        <i class="fa-solid fa-hourglass-half mr-1.5"></i> Partially Paid
+                    </span>
+                    {% elif document.status == 'unpaid' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase bg-rose-100 text-rose-800 border border-rose-200">
+                        <i class="fa-solid fa-clock mr-1.5"></i> Unpaid
+                    </span>
+                    {% elif document.status == 'converted' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-800 border border-blue-200">
+                        <i class="fa-solid fa-arrow-right-arrow-left mr-1.5"></i> Converted to Invoice
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                        {{ document.get_status_display }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill To & Document Dates -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 py-8 border-b border-slate-100 text-sm">
+            <div>
+                <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Billed To</h4>
+                {% if document.customer %}
+                <p class="font-bold text-base text-slate-900">{{ document.customer.name }}</p>
+                {% if document.customer.phone %}
+                <p class="text-slate-600 font-mono text-xs mt-0.5"><i class="fa-solid fa-phone mr-1 text-slate-400"></i> {{ document.customer.phone }}</p>
+                {% endif %}
+                {% if document.customer.email %}
+                <p class="text-slate-600 text-xs mt-0.5"><i class="fa-solid fa-envelope mr-1 text-slate-400"></i> {{ document.customer.email }}</p>
+                {% endif %}
+                {% if document.customer.address %}
+                <p class="text-slate-600 text-xs mt-0.5 whitespace-pre-line">{{ document.customer.address }}</p>
+                {% endif %}
+                {% else %}
+                <p class="font-semibold text-slate-700 italic">Walk-in Customer</p>
+                <p class="text-xs text-slate-400">Direct counter sale</p>
+                {% endif %}
+            </div>
+
+            <div class="sm:text-right space-y-1.5">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase">Date Issued:</span>
+                    <span class="font-medium text-slate-800 ml-2">{{ document.issue_date|date:"F d, Y" }}</span>
+                </div>
+                {% if document.due_date %}
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase">Due Date:</span>
+                    <span class="font-medium text-slate-800 ml-2">{{ document.due_date|date:"F d, Y" }}</span>
+                </div>
+                {% endif %}
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase">Cashier / Staff:</span>
+                    <span class="font-medium text-slate-800 ml-2">{{ document.created_by.get_full_name|default:document.created_by.username|default:"Staff" }}</span>
+                </div>
+                {% if document.converted_from %}
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 uppercase">Converted From:</span>
+                    <a href="{% url 'sales:document_detail' document.converted_from.pk %}" class="text-emerald-600 underline ml-2 font-mono">
+                        {{ document.converted_from.doc_number }}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Line Items Table -->
+        <div class="py-6">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead>
+                    <tr class="text-slate-400 uppercase text-xs font-semibold tracking-wider">
+                        <th class="py-3">Item Description</th>
+                        <th class="py-3 text-center">Qty</th>
+                        <th class="py-3 text-right">Unit Price (KSh)</th>
+                        <th class="py-3 text-right">Line Total (KSh)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for item in items %}
+                    <tr>
+                        <td class="py-4">
+                            <div class="font-bold text-slate-900">{{ item.description }}</div>
+                            <div class="mt-0.5">
+                                {% if item.is_adhoc %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                    <i class="fa-solid fa-pen-ruler mr-1 text-amber-600"></i> Ad-Hoc / Custom Item
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-slate-400 font-mono">
+                                    SKU: {{ item.product.sku }} &bull; Catalog Product
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-4 text-center font-medium text-slate-700">
+                            {{ item.quantity }}
+                        </td>
+                        <td class="py-4 text-right font-mono text-slate-700">
+                            KSh {{ item.unit_price|floatformat:2 }}
+                        </td>
+                        <td class="py-4 text-right font-mono font-bold text-slate-900">
+                            KSh {{ item.line_total|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals & Balance Breakdown -->
+        <div class="pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between gap-6">
+            <div class="flex-1">
+                {% if document.notes %}
+                <h4 class="text-xs font-semibold text-slate-400 uppercase mb-1">Notes & Terms</h4>
+                <p class="text-xs text-slate-600 whitespace-pre-line bg-slate-50 p-3 rounded-lg border border-slate-200">{{ document.notes }}</p>
+                {% endif %}
+            </div>
+
+            <div class="w-full sm:w-72 space-y-2 text-sm">
+                <div class="flex justify-between text-slate-600">
+                    <span>Subtotal:</span>
+                    <span class="font-mono font-semibold text-slate-900">KSh {{ document.subtotal|floatformat:2 }}</span>
+                </div>
+                {% if document.discount > 0 %}
+                <div class="flex justify-between text-emerald-700">
+                    <span>Discount:</span>
+                    <span class="font-mono font-semibold">-KSh {{ document.discount|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                {% if document.tax > 0 %}
+                <div class="flex justify-between text-slate-600">
+                    <span>Tax:</span>
+                    <span class="font-mono font-semibold text-slate-900">+KSh {{ document.tax|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                <div class="pt-2 border-t border-slate-200 flex justify-between text-base font-extrabold text-slate-900">
+                    <span>Grand Total:</span>
+                    <span class="font-mono text-xl text-emerald-700">KSh {{ document.total|floatformat:2 }}</span>
+                </div>
+
+                {% if document.is_invoice %}
+                <div class="pt-2 border-t border-slate-200 flex justify-between text-slate-600 text-xs">
+                    <span>Amount Paid:</span>
+                    <span class="font-mono font-bold text-emerald-600">KSh {{ document.total_paid|floatformat:2 }}</span>
+                </div>
+                <div class="flex justify-between text-xs font-bold {% if document.balance_due > 0 %}text-rose-600{% else %}text-slate-400{% endif %}">
+                    <span>Balance Due:</span>
+                    <span class="font-mono text-sm">KSh {{ document.balance_due|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if receipt %}
+        <!-- Receipt Notice -->
+        <div class="mt-8 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-emerald-900 text-sm">Official Receipt Generated</h4>
+                    <p class="text-xs text-emerald-700">Receipt Number: <strong class="font-mono">{{ receipt.receipt_number }}</strong> &bull; Issued on {{ receipt.issued_at|date:"M d, Y - H:i" }}</p>
+                </div>
+            </div>
+            <form method="get" action="{% url 'sales:receipt_print' document.pk %}" target="_blank" class="inline-flex items-center gap-1.5">
+                <select name="signature_type" id="receipt-signature-type" class="px-2 py-2 bg-white text-slate-700 text-xs font-semibold border border-emerald-300 rounded-lg">
+                    <option value="user">Logged-in user</option>
+                    <option value="custom">Typed signature</option>
+                </select>
+                <input type="text" name="signature_name" id="receipt-signature-name" placeholder="Signature name" aria-label="Receipt custom signature name" class="hidden w-28 px-2 py-2 text-xs border border-emerald-300 rounded-lg">
+                <button type="submit" class="inline-flex items-center px-3 py-2 rounded-lg bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800">
+                    <i class="fa-solid fa-print mr-1"></i> Print receipt
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if document.is_invoice %}
+    <!-- Payments Audit Trail -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-slate-900 text-base">Recorded Payments</h3>
+                <p class="text-xs text-slate-500">History of payments received for this invoice</p>
+            </div>
+            {% if document.balance_due > 0 %}
+            <button type="button" onclick="document.getElementById('payment-modal').classList.remove('hidden')"
+                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors">
+                <i class="fa-solid fa-plus mr-1"></i> Add Payment
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold">
+                    <tr>
+                        <th class="px-6 py-3">Paid Date</th>
+                        <th class="px-6 py-3">Method</th>
+                        <th class="px-6 py-3">Reference / Tx ID</th>
+                        <th class="px-6 py-3 text-right">Amount</th>
+                        <th class="px-6 py-3">Received By</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for p in payments %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-3.5 text-xs text-slate-600 font-mono">{{ p.paid_at|date:"M d, Y - H:i" }}</td>
+                        <td class="px-6 py-3.5 font-medium text-slate-900">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-800">
+                                {{ p.get_method_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-3.5 text-xs font-mono text-slate-600">{{ p.reference|default:"—" }}</td>
+                        <td class="px-6 py-3.5 text-right font-mono font-bold text-emerald-700">KSh {{ p.amount|floatformat:2 }}</td>
+                        <td class="px-6 py-3.5 text-xs text-slate-600">{{ p.received_by.username|default:"Staff" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-xs">
+                            No payments recorded yet for this invoice.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Record Payment -->
+{% if document.is_invoice and document.balance_due > 0 %}
+<div id="payment-modal" class="fixed inset-0 bg-slate-900/60 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <h4 class="font-bold text-slate-900">Record Invoice Payment</h4>
+            <button type="button" onclick="document.getElementById('payment-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 p-1">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form method="post" action="{% url 'sales:record_payment' document.pk %}" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label for="amount" class="block text-sm font-medium text-slate-700 mb-1">
+                    Payment Amount (KSh) <span class="text-rose-500">*</span>
+                </label>
+                <input type="number" step="0.01" min="0.01" max="{{ document.balance_due }}" name="amount" id="amount"
+                       value="{{ document.balance_due }}" required
+                       class="block w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <p class="text-xs text-slate-500 mt-1">Outstanding balance: <strong class="font-mono text-emerald-700">KSh {{ document.balance_due|floatformat:2 }}</strong></p>
+            </div>
+
+            <div>
+                <label for="method" class="block text-sm font-medium text-slate-700 mb-1">
+                    Payment Method <span class="text-rose-500">*</span>
+                </label>
+                <select name="method" id="method" required class="block w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    {% for val, label in payment_methods %}
+                    <option value="{{ val }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="reference" class="block text-sm font-medium text-slate-700 mb-1">
+                    Transaction Code / Reference (Optional)
+                </label>
+                <input type="text" name="reference" id="reference" placeholder="e.g. M-Pesa Code (QHJ883K1), Check #"
+                       class="block w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('payment-modal').classList.add('hidden')"
+                        class="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">
+                    Cancel
+                </button>
+                <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-sm">
+                    Confirm Payment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnOpenPayment = document.getElementById('btn-open-payment');
+    const paymentModal = document.getElementById('payment-modal');
+    if (btnOpenPayment && paymentModal) {
+        btnOpenPayment.addEventListener('click', function() {
+            paymentModal.classList.remove('hidden');
+        });
+    }
+    [
+        ['signature-type', 'signature-name'],
+        ['receipt-signature-type', 'receipt-signature-name']
+    ].forEach(function (ids) {
+        const signatureType = document.getElementById(ids[0]);
+        const signatureName = document.getElementById(ids[1]);
+        if (!signatureType || !signatureName) return;
+        function updateSignatureInput() {
+            const isCustom = signatureType.value === 'custom';
+            signatureName.classList.toggle('hidden', !isCustom);
+            signatureName.required = isCustom;
+        }
+        signatureType.addEventListener('change', updateSignatureInput);
+        updateSignatureInput();
+    });
+});
+</script>
+{% endblock %}
